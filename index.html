@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>漢字の記憶カード</title>
+<style>
+:root {
+  --bg:#f5f7fb; --card:#fff; --text:#1f2937; --muted:#6b7280;
+  --good:#16a34a; --bad:#dc2626; --accent:#2563eb; --line:#dbe2ea;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:var(--bg);color:var(--text)}
+.app{max-width:760px;margin:auto;padding:14px 14px 38px}
+.top{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+h1{font-size:22px;margin:4px 0}
+.small{color:var(--muted);font-size:13px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+button,select,input{font:inherit}
+button{border:0;border-radius:12px;padding:11px 14px;background:#e9eef7;color:var(--text);font-weight:700;cursor:pointer}
+button.primary{background:var(--accent);color:white}
+button.good{background:var(--good);color:#fff}
+button.bad{background:var(--bad);color:#fff}
+button:disabled{opacity:.45;cursor:not-allowed}
+select,input{border:1px solid var(--line);border-radius:10px;padding:9px 10px;background:#fff}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:10px 0 14px}
+.stat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px;text-align:center}
+.stat b{display:block;font-size:19px}
+.progress{height:8px;background:#e5e7eb;border-radius:99px;overflow:hidden;margin:7px 0 14px}
+.progress>div{height:100%;background:var(--accent);width:0}
+.card{min-height:330px;background:var(--card);border:1px solid var(--line);border-radius:24px;box-shadow:0 10px 25px rgba(0,0,0,.06);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px 18px;user-select:none;cursor:pointer}
+.prompt{font-size:14px;color:var(--muted);margin-bottom:14px}
+.question{font-size:54px;font-weight:800;line-height:1.25;word-break:keep-all}
+.answer{font-size:36px;font-weight:800;color:var(--accent);margin-top:24px;display:none}
+.card.revealed .answer{display:block}
+.tap{margin-top:24px;color:var(--muted);font-size:14px}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.actions button{font-size:17px;padding:14px 8px}
+.panel{margin-top:18px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px}
+.panel summary{font-weight:800;cursor:pointer}
+.userrow{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+#newUser{max-width:150px}
+.list{margin-top:10px;max-height:260px;overflow:auto;border-top:1px solid var(--line)}
+.row{display:flex;justify-content:space-between;gap:12px;padding:9px 2px;border-bottom:1px solid #edf0f4}
+.tag{font-size:12px;border-radius:999px;padding:3px 8px;background:#eef2ff}
+@media(max-width:520px){
+ .app{padding:10px 10px 28px}
+ h1{font-size:19px}
+ .stats{grid-template-columns:repeat(4,1fr);gap:5px}
+ .stat{font-size:11px;padding:6px 2px} .stat b{font-size:17px}
+ .card{min-height:300px}
+ .question{font-size:46px}
+ .answer{font-size:32px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <div>
+      <h1>漢字の記憶カード</h1>
+      <div class="small">今回の範囲：44語</div>
+    </div>
+    <div class="userrow">
+      <span class="small">ユーザー</span>
+      <select id="userSelect"></select>
+      <input id="newUser" placeholder="名前を追加">
+      <button id="addUser">追加</button>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <select id="direction">
+      <option value="k2r">漢字 → 読み</option>
+      <option value="r2k">読み → 漢字</option>
+    </select>
+    <button id="allMode" class="primary">全部から出題</button>
+    <button id="reviewMode">覚えていないだけ</button>
+    <button id="shuffleBtn">シャッフル</button>
+    <button id="resetBtn">記録リセット</button>
+  </div>
+
+  <div class="stats">
+    <div class="stat">問題<b id="countAll">44</b></div>
+    <div class="stat">覚えた<b id="countGood">0</b></div>
+    <div class="stat">復習<b id="countBad">0</b></div>
+    <div class="stat">残り<b id="countRemain">44</b></div>
+  </div>
+  <div class="progress"><div id="bar"></div></div>
+
+  <div class="card" id="card" title="タップで答え">
+    <div class="prompt" id="prompt">この漢字の読みは？</div>
+    <div class="question" id="question"></div>
+    <div class="answer" id="answer"></div>
+    <div class="tap" id="tapText">カードをタップして答えを見る</div>
+  </div>
+
+  <div class="actions">
+    <button class="bad" id="badBtn" disabled>覚えていない</button>
+    <button class="good" id="goodBtn" disabled>覚えた</button>
+  </div>
+
+  <details class="panel">
+    <summary>今回の範囲を一覧で見る</summary>
+    <div class="list" id="wordList"></div>
+  </details>
+</div>
+
+<script>
+const CARDS = [{"kanji": "換える", "reading": "かえる"}, {"kanji": "連絡", "reading": "れんらく"}, {"kanji": "項目", "reading": "こうもく"}, {"kanji": "事柄", "reading": "ことがら"}, {"kanji": "踊る", "reading": "おどる"}, {"kanji": "比喩", "reading": "ひゆ"}, {"kanji": "闇", "reading": "やみ"}, {"kanji": "隠す", "reading": "かくす"}, {"kanji": "与える", "reading": "あたえる"}, {"kanji": "蜂", "reading": "はち"}, {"kanji": "歓迎", "reading": "かんげい"}, {"kanji": "擬人法", "reading": "ぎじんほう"}, {"kanji": "倒す", "reading": "たおす"}, {"kanji": "余韻", "reading": "よいん"}, {"kanji": "途方", "reading": "とほう"}, {"kanji": "靴", "reading": "くつ"}, {"kanji": "亀", "reading": "かめ"}, {"kanji": "語彙", "reading": "ごい"}, {"kanji": "皆", "reading": "みな"}, {"kanji": "恥", "reading": "はじ"}, {"kanji": "肩", "reading": "かた"}, {"kanji": "微妙", "reading": "びみょう"}, {"kanji": "磨く", "reading": "みがく"}, {"kanji": "詳しい", "reading": "くわしい"}, {"kanji": "模範", "reading": "もはん"}, {"kanji": "誰", "reading": "だれ"}, {"kanji": "絞る", "reading": "しぼる"}, {"kanji": "込める", "reading": "こめる"}, {"kanji": "被る", "reading": "こうむる"}, {"kanji": "閲覧", "reading": "えつらん"}, {"kanji": "削除", "reading": "さくじょ"}, {"kanji": "溝", "reading": "みぞ"}, {"kanji": "貫徹", "reading": "かんてつ"}, {"kanji": "随分", "reading": "ずいぶん"}, {"kanji": "彫刻", "reading": "ちょうこく"}, {"kanji": "漫画", "reading": "まんが"}, {"kanji": "遵守", "reading": "じゅんしゅ"}, {"kanji": "紹介", "reading": "しょうかい"}, {"kanji": "幅", "reading": "はば"}, {"kanji": "彼", "reading": "かれ"}, {"kanji": "脱出", "reading": "だっしゅつ"}, {"kanji": "腕", "reading": "うで"}, {"kanji": "一斉", "reading": "いっせい"}, {"kanji": "悪魔", "reading": "あくま"}];
+const LS_USERS = "kanji_memory_users_v1";
+let users = JSON.parse(localStorage.getItem(LS_USERS) || '["学習者1"]');
+let currentUser = localStorage.getItem("kanji_memory_current_user") || users[0];
+let mode = "all";
+let queue = [];
+let index = 0;
+let revealed = false;
+
+const $ = id => document.getElementById(id);
+
+function key() {
+  return "kanji_memory_progress_v1_" + currentUser;
+}
+function progressData() {
+  return JSON.parse(localStorage.getItem(key()) || "{}");
+}
+function saveProgress(p) {
+  localStorage.setItem(key(), JSON.stringify(p));
+}
+function setupUsers() {
+  $("userSelect").innerHTML = "";
+  users.forEach(u => {
+    const o = document.createElement("option");
+    o.value = o.textContent = u;
+    if (u === currentUser) o.selected = true;
+    $("userSelect").appendChild(o);
+  });
+}
+function makeQueue() {
+  const p = progressData();
+  queue = CARDS.map((c,i)=>i).filter(i => mode === "all" || p[i] === "bad");
+  if (!queue.length && mode === "review") {
+    index = 0;
+    $("question").textContent = "復習するカードはありません";
+    $("answer").textContent = "全部「覚えた」になっています";
+    $("card").classList.add("revealed");
+    $("goodBtn").disabled = $("badBtn").disabled = true;
+    updateStats();
+    return;
+  }
+  index = 0;
+  showCard();
+}
+function showCard() {
+  if (!queue.length) return;
+  if (index >= queue.length) index = 0;
+  const c = CARDS[queue[index]];
+  const dir = $("direction").value;
+  $("prompt").textContent = dir === "k2r" ? "この漢字の読みは？" : "この読みの漢字は？";
+  $("question").textContent = dir === "k2r" ? c.kanji : c.reading;
+  $("answer").textContent = dir === "k2r" ? c.reading : c.kanji;
+  $("card").classList.remove("revealed");
+  $("tapText").textContent = "カードをタップして答えを見る";
+  $("goodBtn").disabled = $("badBtn").disabled = true;
+  revealed = false;
+  updateStats();
+}
+function reveal() {
+  if (!queue.length) return;
+  revealed = true;
+  $("card").classList.add("revealed");
+  $("tapText").textContent = "覚えていたかを選んでください";
+  $("goodBtn").disabled = $("badBtn").disabled = false;
+}
+function mark(status) {
+  if (!revealed || !queue.length) return;
+  const p = progressData();
+  const cardIndex = queue[index];
+  p[cardIndex] = status;
+  saveProgress(p);
+  if (mode === "review" && status === "good") {
+    queue.splice(index,1);
+    if (!queue.length) {
+      makeQueue();
+      return;
+    }
+    if (index >= queue.length) index = 0;
+  } else {
+    index = (index + 1) % queue.length;
+  }
+  showCard();
+}
+function updateStats() {
+  const p = progressData();
+  let good=0,bad=0;
+  CARDS.forEach((_,i)=> {
+    if(p[i]==="good") good++;
+    if(p[i]==="bad") bad++;
+  });
+  $("countGood").textContent = good;
+  $("countBad").textContent = bad;
+  $("countRemain").textContent = CARDS.length-good;
+  $("bar").style.width = (good/CARDS.length*100).toFixed(1)+"%";
+}
+function shuffleQueue() {
+  for(let i=queue.length-1;i>0;i--) {
+    const j=Math.floor(Math.random()*(i+1));
+    [queue[i],queue[j]]=[queue[j],queue[i]];
+  }
+  index=0; showCard();
+}
+function buildList() {
+  $("wordList").innerHTML = "";
+  CARDS.forEach(c=>{
+    const d=document.createElement("div");
+    d.className="row";
+    d.innerHTML=`<b>${c.kanji}</b><span>${c.reading}</span>`;
+    $("wordList").appendChild(d);
+  });
+}
+
+$("card").onclick = reveal;
+$("goodBtn").onclick = ()=>mark("good");
+$("badBtn").onclick = ()=>mark("bad");
+$("shuffleBtn").onclick = shuffleQueue;
+$("direction").onchange = showCard;
+$("allMode").onclick = ()=>{mode="all"; $("allMode").classList.add("primary"); $("reviewMode").classList.remove("primary"); makeQueue();};
+$("reviewMode").onclick = ()=>{mode="review"; $("reviewMode").classList.add("primary"); $("allMode").classList.remove("primary"); makeQueue();};
+$("resetBtn").onclick = ()=>{
+  if(confirm(currentUser+" の学習記録をリセットしますか？")) {
+    localStorage.removeItem(key()); makeQueue(); updateStats();
+  }
+};
+$("userSelect").onchange = e=>{
+  currentUser=e.target.value; localStorage.setItem("kanji_memory_current_user",currentUser); makeQueue(); updateStats();
+};
+$("addUser").onclick = ()=>{
+  const u=$("newUser").value.trim();
+  if(!u) return;
+  if(!users.includes(u)) {
+    users.push(u); localStorage.setItem(LS_USERS,JSON.stringify(users));
+  }
+  currentUser=u; localStorage.setItem("kanji_memory_current_user",u);
+  $("newUser").value=""; setupUsers(); makeQueue(); updateStats();
+};
+setupUsers(); buildList(); makeQueue(); updateStats();
+</script>
+</body>
+</html>
