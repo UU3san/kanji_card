@@ -11,7 +11,7 @@
 }
 *{box-sizing:border-box}
 body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:var(--bg);color:var(--text)}
-.app{max-width:760px;margin:auto;padding:14px 14px 38px}
+.app{max-width:860px;margin:auto;padding:14px 14px 38px}
 .top{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
 h1{font-size:22px;margin:4px 0}
 .small{color:var(--muted);font-size:13px}
@@ -28,16 +28,16 @@ select,input{border:1px solid var(--line);border-radius:10px;padding:9px 10px;ba
 .stat b{display:block;font-size:19px}
 .progress{height:8px;background:#e5e7eb;border-radius:99px;overflow:hidden;margin:7px 0 14px}
 .progress>div{height:100%;background:var(--accent);width:0}
-.card{min-height:330px;background:var(--card);border:1px solid var(--line);border-radius:24px;box-shadow:0 10px 25px rgba(0,0,0,.06);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px 18px;user-select:none;cursor:pointer}
+.card{min-height:360px;background:var(--card);border:1px solid var(--line);border-radius:24px;box-shadow:0 10px 25px rgba(0,0,0,.06);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px 18px;user-select:none;cursor:pointer}
 .prompt{font-size:14px;color:var(--muted);margin-bottom:14px}
 .question{font-size:54px;font-weight:800;line-height:1.25;word-break:keep-all}
 .answer{font-size:36px;font-weight:800;color:var(--accent);margin-top:24px;display:none}
-.meaning-box{display:none;margin-top:22px;width:100%;max-width:620px;text-align:left;background:#f8fafc;border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.meaning-box{display:none;margin-top:22px;width:100%;max-width:680px;text-align:left;background:#f8fafc;border:1px solid var(--line);border-radius:14px;padding:14px 16px}
 .meaning-box .label{font-size:12px;font-weight:800;color:var(--muted);margin-bottom:4px}
 .meaning-box .meaning{font-size:18px;line-height:1.65;margin-bottom:12px}
 .meaning-box .example{font-size:18px;line-height:1.65}
-.card.revealed .meaning-box{display:block}
 .card.revealed .answer{display:block}
+.card.revealed .meaning-box{display:block}
 .tap{margin-top:24px;color:var(--muted);font-size:14px}
 .actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
 .actions button{font-size:17px;padding:14px 8px}
@@ -47,15 +47,15 @@ select,input{border:1px solid var(--line);border-radius:10px;padding:9px 10px;ba
 #newUser{max-width:150px}
 .list{margin-top:10px;max-height:260px;overflow:auto;border-top:1px solid var(--line)}
 .row{display:flex;justify-content:space-between;gap:12px;padding:9px 2px;border-bottom:1px solid #edf0f4}
-.tag{font-size:12px;border-radius:999px;padding:3px 8px;background:#eef2ff}
 @media(max-width:520px){
  .app{padding:10px 10px 28px}
  h1{font-size:19px}
  .stats{grid-template-columns:repeat(4,1fr);gap:5px}
  .stat{font-size:11px;padding:6px 2px} .stat b{font-size:17px}
- .card{min-height:300px}
+ .card{min-height:320px}
  .question{font-size:46px}
  .answer{font-size:32px}
+ .meaning-box .meaning,.meaning-box .example{font-size:16px}
 }
 </style>
 </head>
@@ -64,7 +64,7 @@ select,input{border:1px solid var(--line);border-radius:10px;padding:9px 10px;ba
   <div class="top">
     <div>
       <h1>漢字の記憶カード</h1>
-      <div class="small">今回の範囲：44語</div>
+      <div class="small" id="rangeInfo">今回の範囲：全部（44語）</div>
     </div>
     <div class="userrow">
       <span class="small">ユーザー</span>
@@ -75,6 +75,12 @@ select,input{border:1px solid var(--line);border-radius:10px;padding:9px 10px;ba
   </div>
 
   <div class="toolbar">
+    <select id="setSelect">
+      <option value="all">全部（44問）</option>
+      <option value="set1">セット1（1〜15）</option>
+      <option value="set2">セット2（16〜30）</option>
+      <option value="set3">セット3（31〜44）</option>
+    </select>
     <select id="direction">
       <option value="k2r">漢字 → 読み</option>
       <option value="r2k">読み → 漢字</option>
@@ -119,9 +125,16 @@ select,input{border:1px solid var(--line);border-radius:10px;padding:9px 10px;ba
 
 <script>
 const CARDS = [{"kanji": "換える", "reading": "かえる", "meaning": "別のものに取りかえる。", "example": "古い電池を新しい電池に換える。"}, {"kanji": "連絡", "reading": "れんらく", "meaning": "知らせたり、相手と情報をやり取りしたりすること。", "example": "先生に電話で連絡する。"}, {"kanji": "項目", "reading": "こうもく", "meaning": "内容を分けた一つ一つの部分。", "example": "必要な項目を記入する。"}, {"kanji": "事柄", "reading": "ことがら", "meaning": "ある物事の内容や出来事。", "example": "大切な事柄をノートに書く。"}, {"kanji": "踊る", "reading": "おどる", "meaning": "音楽などに合わせて体を動かす。", "example": "みんなで楽しく踊る。"}, {"kanji": "比喩", "reading": "ひゆ", "meaning": "ある物事を、別のものにたとえて表すこと。", "example": "『雪のように白い』は比喩を使った表現だ。"}, {"kanji": "闇", "reading": "やみ", "meaning": "光がなく暗いこと。また、暗い場所。", "example": "闇の中では何も見えなかった。"}, {"kanji": "隠す", "reading": "かくす", "meaning": "人に見えないようにする。", "example": "プレゼントを箱の中に隠す。"}, {"kanji": "与える", "reading": "あたえる", "meaning": "相手に何かをあげる。影響などを及ぼす。", "example": "この本は私に勇気を与えた。"}, {"kanji": "蜂", "reading": "はち", "meaning": "花の蜜などを集める昆虫の一種。", "example": "花のまわりを蜂が飛んでいる。"}, {"kanji": "歓迎", "reading": "かんげい", "meaning": "喜んで迎えること。", "example": "新しい友達を歓迎する。"}, {"kanji": "擬人法", "reading": "ぎじんほう", "meaning": "人でないものを、人のように表現する方法。", "example": "『風が歌う』は擬人法の表現だ。"}, {"kanji": "倒す", "reading": "たおす", "meaning": "立っているものを横にする。相手に勝つ。", "example": "強い相手を試合で倒す。"}, {"kanji": "余韻", "reading": "よいん", "meaning": "音や感動などが、あとまで残ること。", "example": "映画の余韻にひたる。"}, {"kanji": "途方", "reading": "とほう", "meaning": "方法や手段。『途方に暮れる』で、どうしてよいか分からないこと。", "example": "道に迷って途方に暮れた。"}, {"kanji": "靴", "reading": "くつ", "meaning": "足にはいて、足を守るもの。", "example": "新しい靴をはいて出かける。"}, {"kanji": "亀", "reading": "かめ", "meaning": "かたい甲羅をもつ動物。", "example": "池で亀が泳いでいる。"}, {"kanji": "語彙", "reading": "ごい", "meaning": "ある人や言語が使う言葉の集まり。", "example": "読書をすると語彙が増える。"}, {"kanji": "皆", "reading": "みな", "meaning": "そこにいる人や物のすべて。", "example": "皆で力を合わせる。"}, {"kanji": "恥", "reading": "はじ", "meaning": "人に知られると、はずかしいと感じること。", "example": "失敗を恥だと思わなくてよい。"}, {"kanji": "肩", "reading": "かた", "meaning": "首と腕の間にある体の部分。", "example": "重い荷物を肩にかける。"}, {"kanji": "微妙", "reading": "びみょう", "meaning": "はっきり決めにくい様子。細かくて複雑な様子。", "example": "二つの色には微妙な違いがある。"}, {"kanji": "磨く", "reading": "みがく", "meaning": "こすってきれいにする。技術などを高める。", "example": "毎朝、歯を磨く。"}, {"kanji": "詳しい", "reading": "くわしい", "meaning": "細かいところまでよく知っている。", "example": "兄は電車に詳しい。"}, {"kanji": "模範", "reading": "もはん", "meaning": "見習うべきよい手本。", "example": "彼はみんなの模範となる生徒だ。"}, {"kanji": "誰", "reading": "だれ", "meaning": "どの人かをたずねる言葉。", "example": "あそこにいる人は誰ですか。"}, {"kanji": "絞る", "reading": "しぼる", "meaning": "強く押したりねじったりして、水分を出す。範囲を狭くする。", "example": "ぬれたタオルを絞る。"}, {"kanji": "込める", "reading": "こめる", "meaning": "気持ちや力などを中に入れる。", "example": "感謝の気持ちを込めて手紙を書く。"}, {"kanji": "被る", "reading": "こうむる", "meaning": "よくないことや影響を受ける。", "example": "台風で大きな被害を被る。"}, {"kanji": "閲覧", "reading": "えつらん", "meaning": "本や書類、ウェブページなどを見ること。", "example": "図書館で資料を閲覧する。"}, {"kanji": "削除", "reading": "さくじょ", "meaning": "不要なものを消して取り除くこと。", "example": "いらないファイルを削除する。"}, {"kanji": "溝", "reading": "みぞ", "meaning": "細長く掘ったくぼみ。人間関係のへだたりの意味でも使う。", "example": "道路の横に溝がある。"}, {"kanji": "貫徹", "reading": "かんてつ", "meaning": "考えや方針を最後までやり通すこと。", "example": "自分の意志を貫徹する。"}, {"kanji": "随分", "reading": "ずいぶん", "meaning": "思っていたよりかなり。", "example": "今日は随分寒いね。"}, {"kanji": "彫刻", "reading": "ちょうこく", "meaning": "木や石などを彫って形を作ること。また、その作品。", "example": "美術館で彫刻を見る。"}, {"kanji": "漫画", "reading": "まんが", "meaning": "絵と文字などで物語や内容を表したもの。", "example": "休日に漫画を読む。"}, {"kanji": "遵守", "reading": "じゅんしゅ", "meaning": "決まりや法律をきちんと守ること。", "example": "学校の規則を遵守する。"}, {"kanji": "紹介", "reading": "しょうかい", "meaning": "人や物事を、相手に知らせること。", "example": "友達を家族に紹介する。"}, {"kanji": "幅", "reading": "はば", "meaning": "横の長さ。また、範囲の広さ。", "example": "この道は幅が広い。"}, {"kanji": "彼", "reading": "かれ", "meaning": "男性を指す言葉。", "example": "彼は私の友達です。"}, {"kanji": "脱出", "reading": "だっしゅつ", "meaning": "危険な場所などから抜け出すこと。", "example": "建物から無事に脱出する。"}, {"kanji": "腕", "reading": "うで", "meaning": "肩から手までの部分。能力や技術の意味でも使う。", "example": "重い荷物を腕で持つ。"}, {"kanji": "一斉", "reading": "いっせい", "meaning": "みんなが同時に同じことをすること。", "example": "生徒が一斉に立ち上がった。"}, {"kanji": "悪魔", "reading": "あくま", "meaning": "人を悪い方向へ導くと考えられる存在。", "example": "物語に悪魔が登場する。"}];
-const LS_USERS = "kanji_memory_users_v1";
+const SET_RANGES = {all:[0,CARDS.length-1], set1:[0,14], set2:[15,29], set3:[30,CARDS.length-1]};
+const RANGE_LABELS = {
+  all: "今回の範囲：全部（44語）",
+  set1: "今回の範囲：セット1（1〜15）",
+  set2: "今回の範囲：セット2（16〜30）",
+  set3: "今回の範囲：セット3（31〜44）"
+};
+const LS_USERS = "kanji_memory_users_v2";
 let users = JSON.parse(localStorage.getItem(LS_USERS) || '["学習者1"]');
-let currentUser = localStorage.getItem("kanji_memory_current_user") || users[0];
+let currentUser = localStorage.getItem("kanji_memory_current_user_v2") || users[0];
 let mode = "all";
 let queue = [];
 let index = 0;
@@ -130,7 +143,7 @@ let revealed = false;
 const $ = id => document.getElementById(id);
 
 function key() {
-  return "kanji_memory_progress_v1_" + currentUser;
+  return "kanji_memory_progress_v2_" + currentUser;
 }
 function progressData() {
   return JSON.parse(localStorage.getItem(key()) || "{}");
@@ -147,13 +160,20 @@ function setupUsers() {
     $("userSelect").appendChild(o);
   });
 }
+function currentIndices() {
+  const setName = $("setSelect").value;
+  const range = SET_RANGES[setName] || [0, CARDS.length - 1];
+  return CARDS.map((_, i) => i).filter(i => i >= range[0] && i <= range[1]);
+}
 function makeQueue() {
   const p = progressData();
-  queue = CARDS.map((c,i)=>i).filter(i => mode === "all" || p[i] === "bad");
+  const targets = currentIndices();
+  queue = targets.filter(i => mode === "all" || p[i] === "bad");
   if (!queue.length && mode === "review") {
-    index = 0;
     $("question").textContent = "復習するカードはありません";
     $("answer").textContent = "全部「覚えた」になっています";
+    $("meaning").textContent = "";
+    $("example").textContent = "";
     $("card").classList.add("revealed");
     $("goodBtn").disabled = $("badBtn").disabled = true;
     updateStats();
@@ -192,7 +212,7 @@ function mark(status) {
   p[cardIndex] = status;
   saveProgress(p);
   if (mode === "review" && status === "good") {
-    queue.splice(index,1);
+    queue.splice(index, 1);
     if (!queue.length) {
       makeQueue();
       return;
@@ -205,29 +225,36 @@ function mark(status) {
 }
 function updateStats() {
   const p = progressData();
-  let good=0,bad=0;
-  CARDS.forEach((_,i)=> {
-    if(p[i]==="good") good++;
-    if(p[i]==="bad") bad++;
+  const targets = currentIndices();
+  let good = 0, bad = 0;
+  targets.forEach(i => {
+    if (p[i] === "good") good++;
+    if (p[i] === "bad") bad++;
   });
+  const total = targets.length;
+  $("countAll").textContent = total;
   $("countGood").textContent = good;
   $("countBad").textContent = bad;
-  $("countRemain").textContent = CARDS.length-good;
-  $("bar").style.width = (good/CARDS.length*100).toFixed(1)+"%";
+  $("countRemain").textContent = total - good;
+  $("bar").style.width = (total ? (good / total * 100) : 0).toFixed(1) + "%";
+  $("rangeInfo").textContent = RANGE_LABELS[$("setSelect").value];
 }
 function shuffleQueue() {
-  for(let i=queue.length-1;i>0;i--) {
-    const j=Math.floor(Math.random()*(i+1));
-    [queue[i],queue[j]]=[queue[j],queue[i]];
+  for (let i = queue.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [queue[i], queue[j]] = [queue[j], queue[i]];
   }
-  index=0; showCard();
+  index = 0;
+  showCard();
 }
 function buildList() {
   $("wordList").innerHTML = "";
-  CARDS.forEach(c=>{
-    const d=document.createElement("div");
-    d.className="row";
-    d.innerHTML=`<div><b>${c.kanji}</b> <span>${c.reading}</span><div class="small">${c.meaning}</div></div>`;
+  const targets = currentIndices();
+  targets.forEach(i => {
+    const c = CARDS[i];
+    const d = document.createElement("div");
+    d.className = "row";
+    d.innerHTML = `<div><b>${i+1}. ${c.kanji}</b>　<span>${c.reading}</span><div class="small">${c.meaning}</div></div>`;
     $("wordList").appendChild(d);
   });
 }
@@ -237,6 +264,7 @@ $("goodBtn").onclick = ()=>mark("good");
 $("badBtn").onclick = ()=>mark("bad");
 $("shuffleBtn").onclick = shuffleQueue;
 $("direction").onchange = showCard;
+$("setSelect").onchange = ()=>{ buildList(); makeQueue(); };
 $("allMode").onclick = ()=>{mode="all"; $("allMode").classList.add("primary"); $("reviewMode").classList.remove("primary"); makeQueue();};
 $("reviewMode").onclick = ()=>{mode="review"; $("reviewMode").classList.add("primary"); $("allMode").classList.remove("primary"); makeQueue();};
 $("resetBtn").onclick = ()=>{
@@ -245,18 +273,28 @@ $("resetBtn").onclick = ()=>{
   }
 };
 $("userSelect").onchange = e=>{
-  currentUser=e.target.value; localStorage.setItem("kanji_memory_current_user",currentUser); makeQueue(); updateStats();
+  currentUser = e.target.value;
+  localStorage.setItem("kanji_memory_current_user_v2", currentUser);
+  makeQueue(); updateStats();
 };
 $("addUser").onclick = ()=>{
-  const u=$("newUser").value.trim();
+  const u = $("newUser").value.trim();
   if(!u) return;
   if(!users.includes(u)) {
-    users.push(u); localStorage.setItem(LS_USERS,JSON.stringify(users));
+    users.push(u);
+    localStorage.setItem(LS_USERS, JSON.stringify(users));
   }
-  currentUser=u; localStorage.setItem("kanji_memory_current_user",u);
-  $("newUser").value=""; setupUsers(); makeQueue(); updateStats();
+  currentUser = u;
+  localStorage.setItem("kanji_memory_current_user_v2", u);
+  $("newUser").value="";
+  setupUsers();
+  makeQueue();
+  updateStats();
 };
-setupUsers(); buildList(); makeQueue(); updateStats();
+setupUsers();
+buildList();
+makeQueue();
+updateStats();
 </script>
 </body>
 </html>
